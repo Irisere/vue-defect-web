@@ -1,0 +1,76 @@
+/* main.css */
+@import './base.css';
+
+:root {
+  /* 核心配色：参考图风格 */
+  --bg-color: #F2F0E9;       /* 柔和米色背景 */
+  --card-bg: #FFFFFF;        /* 卡片纯白 */
+  --text-primary: #1C1C1E;   /* 近乎黑 */
+  --text-secondary: #8D8D8D; /* 柔和灰 */
+  --accent-black: #1C1C1E;   /* 强调色：黑 */
+  --accent-yellow: #F4D35E;  /* 装饰黄 */
+  --accent-red: #EE6055;     /* 装饰红 */
+  --radius-lg: 24px;         /* 大圆角 */
+  --radius-md: 16px;
+  --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.04); /* 弥散阴影 */
+}
+
+/* 全局重置 */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  font-family: 'DM Sans', 'Inter', -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 覆盖 Element Plus 默认样式，使其变圆润 */
+.el-button {
+  border-radius: 30px !important; /* 胶囊按钮 */
+  font-weight: 600 !important;
+}
+
+/* 黑色主按钮风格 */
+.el-button--primary {
+  background-color: var(--accent-black) !important;
+  border-color: var(--accent-black) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(28, 28, 30, 0.2);
+  transition: transform 0.2s !important;
+}
+.el-button--primary:hover {
+  transform: scale(1.05);
+  background-color: #000 !important;
+}
+
+/* 白色卡片风格 */
+.el-card {
+  border-radius: var(--radius-lg) !important;
+  border: none !important;
+  box-shadow: var(--shadow-soft) !important;
+  background-color: var(--card-bg) !important;
+}
+
+/* 表格样式优化 */
+.el-table {
+  --el-table-header-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  background-color: transparent !important;
+}
+.el-table th.el-table__cell {
+  background-color: #FAFAFA !important;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
