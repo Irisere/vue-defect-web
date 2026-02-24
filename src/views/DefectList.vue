@@ -14,6 +14,9 @@
             </div>
 
             <div class="header-controls">
+                <el-button type="primary" class="soft-btn" @click="handleExport" :icon="Download">
+                    导出 Excel
+                </el-button>
                 <el-select v-model="filterSeverity" placeholder="筛选严重级" clearable class="soft-select" size="large">
                     <el-option label="全部等级" value="" />
                     <el-option label="Critical" value="Critical" />
@@ -94,8 +97,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue' // 引入 computed
 import { useRoute } from 'vue-router'
-import { ArrowLeft, TopRight } from '@element-plus/icons-vue'
-import { getDefectsByRepo, deleteDefect } from '../api'
+import { ArrowLeft, TopRight, Download } from '@element-plus/icons-vue'
+import { getDefectsByRepo, deleteDefect, exportDefectExcel } from '../api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 
@@ -180,6 +183,53 @@ const handleDelete = async () => {
     }
 }
 
+//导出报告
+const handleExport = async () => {
+    const repoId = Number(route.params.id)
+    if (!repoId) return
+
+    try {
+        ElMessage.info('正在准备导出...')
+
+        // 调用 api 文件中定义的接口
+        const res: any = await exportDefectExcel(repoId)
+
+        // --- 核心修复：兼容拦截器直接返回 res.data 的情况 ---
+        // 如果拦截器返回了 res.data，那么 headers 会在 res.headers 中
+        // 如果 transformResponse 生效，headers 会在 res.data.headers 中
+        const data = res.data?.data || res.data || res;
+        const headers = res.data?.headers || res.headers;
+
+        if (!data || !headers) {
+            throw new Error("无法获取文件流或响应头");
+        }
+
+        const blob = new Blob([data])
+        const url = window.URL.createObjectURL(blob)
+
+        // 从 header 中解析文件名（注意 axios headers 通常是全小写）
+        const disposition = headers['content-disposition'] || headers['Content-Disposition'];
+        let fileName = `缺陷报告_${repoId}.xlsx`
+
+        if (disposition && disposition.includes('filename*=utf-8\'\'')) {
+            fileName = decodeURIComponent(disposition.split('filename*=utf-8\'\'')[1])
+        }
+
+        const link = document.createElement('a')
+        link.href = url
+        link.download = fileName
+        document.body.appendChild(link)
+        link.click()
+
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
+        ElMessage.success('导出成功')
+    } catch (error) {
+        console.error('Export Error:', error)
+        ElMessage.error('导出失败：无法获取服务器响应')
+    }
+}
+
 const getSeverityClass = (sev: string) => {
     if (sev === 'Critical') return 'critical'
     if (sev === 'High') return 'high'
@@ -217,6 +267,14 @@ onMounted(loadData)
     display: flex;
     gap: 15px;
     align-items: center;
+}
+
+.soft-btn {
+    border-radius: 20px;
+    height: 40px;
+    padding: 0 20px;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* 复用原有的按钮样式 */
@@ -266,10 +324,6 @@ onMounted(loadData)
 :deep(.soft-select .el-input__wrapper.is-focus) {
     box-shadow: 0 0 0 1px #8c52ff !important;
     /* 聚焦时紫色 */
-}
-
-.soft-radio {
-    /* 胶囊状单选框 */
 }
 
 :deep(.el-radio-button__inner) {

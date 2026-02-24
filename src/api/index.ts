@@ -76,6 +76,16 @@ export const getDefectsByRepo = (repoId: number) => request.get(`/defect/repo/${
 export const deleteDefect = (id: number) => {
   return request.delete(`/defect/${id}`)
 }
+// 导出缺陷报告 Excel
+export const exportDefectExcel = (repoId: number) => {
+  return request.get(`/defect/repo/${repoId}/export`, {
+    responseType: 'blob',
+    // 关键：transformResponse 确保在拦截器之后还能拿到 headers
+    transformResponse: [(data: any, headers: any) => {
+      return { data, headers }
+    }]
+  })
+}
 
 
 // --- Token 配置相关 ---
