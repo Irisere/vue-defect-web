@@ -14,8 +14,9 @@
             </div>
 
             <div class="header-controls">
-                <button class="black-btn" @click="openDialog()">
-                    Add Token <el-icon class="icon-right">
+                <button class="black-btn soft-btn" @click="openDialog()">
+                    Add Token
+                    <el-icon class="icon-right">
                         <Plus />
                     </el-icon>
                 </button>
@@ -26,95 +27,94 @@
             <el-skeleton animated :count="3" />
         </div>
 
-        <div v-else class="content-grid">
-            <el-row :gutter="24">
-                <el-col :xs="24" :sm="12" :md="8" v-for="item in tokenList" :key="item.id">
-                    <div class="bento-card token-card" :class="{ 'inactive': !item.isActive }">
-
-                        <div class="card-top">
-                            <div class="platform-badge" :class="item.platform.toLowerCase()">
-                                <i class="iconfont" :class="getPlatformIcon(item.platform)"></i>
-                                {{ item.platform }}
-                            </div>
-                            <el-switch v-model="item.isActive" @change="(val: boolean) => handleStatusChange(item, val)"
-                                style="--el-switch-on-color: #1C1C1E;" />
+        <div v-else class="kanban-board">
+            <el-row :gutter="24" class="full-height">
+                <el-col :md="8" :sm="24" v-for="platform in ['GitHub', 'Gitee', 'GitLab']" :key="platform">
+                    <div class="kanban-column">
+                        <div class="column-header" :class="platform.toLowerCase()">
+                            <span class="platform-name">{{ platform }}</span>
+                            <span class="platform-count">{{ getPlatformList(platform).length }}</span>
                         </div>
 
-                        <div class="card-body">
-                            <h4 class="remark-title">{{ item.remark || '未命名配置' }}</h4>
-                            <div class="token-box">
-                                <span class="token-text">{{ maskToken(item.token) }}</span>
-                                <el-icon class="copy-icon" @click="copyToken(item.token)">
-                                    <CopyDocument />
-                                </el-icon>
+                        <div class="column-scroll-area">
+                            <div v-if="getPlatformList(platform).length === 0" class="empty-tip">
+                                <el-empty :image-size="60" description="暂无配置" />
                             </div>
-                        </div>
 
-                        <div class="card-footer">
-                            <span class="status-dot" :class="item.isActive ? 'active' : 'inactive'">
-                                {{ item.isActive ? 'Active' : 'Disabled' }}
-                            </span>
-                            <div class="action-group">
-                                <el-button link class="icon-btn edit" @click="openDialog(item)">
-                                    <el-icon>
-                                        <Edit />
-                                    </el-icon>
-                                </el-button>
-                                <el-popconfirm title="确定要删除该配置吗?" @confirm="handleDelete(item.id)">
-                                    <template #reference>
-                                        <el-button link class="icon-btn delete">
-                                            <el-icon>
-                                                <Delete />
-                                            </el-icon>
+                            <div v-for="item in getPlatformList(platform)" :key="item.id" class="bento-card"
+                                :class="{ 'active-card': item.isActive }">
+
+                                <div class="card-top">
+                                    <span class="status-badge" :class="getUsableType(item.isUsable)">
+                                        {{ getUsableLabel(item.isUsable) }}
+                                    </span>
+                                    <span class="date">{{ formatDate(item.createAt) }}</span>
+                                </div>
+
+                                <div class="card-body">
+                                    <h4 class="card-title">{{ item.remark || '未命名配置' }}</h4>
+                                    <div v-if="item.isActive" class="active-tag-mini">
+                                        <div class="dot"></div> 当前启用
+                                    </div>
+                                </div>
+
+                                <div class="card-bottom">
+                                    <el-button size="small" round :loading="validatingId === item.id"
+                                        @click="handleValidate(item.id!)" class="validate-btn">
+                                        测试连接
+                                    </el-button>
+
+                                    <div class="action-group">
+                                        <el-button v-if="!item.isActive" size="small" class="enable-btn"
+                                            @click="handleStatusChange(item, true)">
+                                            启用
                                         </el-button>
-                                    </template>
-                                </el-popconfirm>
+                                        <el-popconfirm title="确定删除吗?" @confirm="handleDelete(item.id)">
+                                            <template #reference>
+                                                <el-button link class="delete-icon-btn">
+                                                    <el-icon>
+                                                        <Delete />
+                                                    </el-icon>
+                                                </el-button>
+                                            </template>
+                                        </el-popconfirm>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-
                     </div>
-                </el-col>
-
-                <el-col :span="24" v-if="tokenList.length === 0">
-                    <el-empty description="暂无 Token 配置，请点击右上角添加" />
                 </el-col>
             </el-row>
         </div>
 
-        <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑 Token' : '新增 Token'" width="450px" align-center
-            class="custom-dialog">
+        <el-dialog v-model="dialogVisible" title="新增 Token 配置" width="450px" align-center class="custom-dialog">
             <el-form :model="form" label-position="top" size="large">
                 <el-form-item label="代码托管平台">
-                    <el-select v-model="form.platform" class="full-width soft-input" placeholder="请选择平台">
+                    <el-select v-model="form.platform" class="full-width soft-select">
                         <el-option label="GitHub" value="github" />
                         <el-option label="Gitee" value="gitee" />
                         <el-option label="GitLab" value="gitlab" />
                     </el-select>
                 </el-form-item>
-
                 <el-form-item label="Access Token">
-                    <el-input v-model="form.token" placeholder="例如: ghp_xxxxxxxx..." type="password" show-password
-                        class="soft-input" />
+                    <el-input v-model="form.token" type="password" show-password class="soft-input"
+                        placeholder="请输入Token" />
                 </el-form-item>
-
                 <el-form-item label="备注名称">
-                    <el-input v-model="form.remark" placeholder="例如: 我的个人开发Token" class="soft-input" />
-                </el-form-item>
-
-                <el-form-item label="初始状态">
-                    <el-radio-group v-model="form.isActive" class="soft-radio">
-                        <el-radio-button :label="true">启用</el-radio-button>
-                        <el-radio-button :label="false">禁用</el-radio-button>
-                    </el-radio-group>
+                    <el-input v-model="form.remark" placeholder="例如: 开发环境Token" class="soft-input" />
                 </el-form-item>
             </el-form>
-
             <template #footer>
                 <div class="dialog-actions">
-                    <el-button @click="dialogVisible = false" round>取消</el-button>
-                    <el-button type="primary" @click="handleSave" :loading="submitting" round>
-                        保存配置
-                    </el-button>
+                    <button class="action-btn cancel-btn" @click="dialogVisible = false">
+                        取消
+                    </button>
+                    <button class="action-btn confirm-btn" :disabled="submitting" @click="handleSave">
+                        <span v-if="!submitting">确认添加</span>
+                        <el-icon v-else class="is-loading">
+                            <Loading />
+                        </el-icon>
+                    </button>
                 </div>
             </template>
         </el-dialog>
@@ -122,146 +122,132 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
-import {
-    ArrowLeft, Plus, Edit, Delete, CopyDocument, Link
-} from '@element-plus/icons-vue'
+import { ref, onMounted } from 'vue'
+import { ArrowLeft, Plus, Delete } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import {
-    getTokenList, addToken, updateToken, updateTokenStatus, deleteToken, type TokenConfig
-} from '../api'
+import { getTokenList, addToken, updateTokenStatus, deleteToken, validateToken, type TokenConfig } from '../api'
 
+// --- 逻辑部分保持不变 ---
 const loading = ref(false)
 const submitting = ref(false)
+const validatingId = ref<number | null>(null)
 const tokenList = ref<TokenConfig[]>([])
 const dialogVisible = ref(false)
-const isEdit = ref(false)
+const initialForm = { platform: 'github', token: '', remark: '', isActive: false }
+const form = ref<any>({ ...initialForm })
 
-// 表单初始数据
-const initialForm = {
-    id: undefined,
-    platform: 'github',
-    token: '',
-    remark: '',
-    isActive: true
+const formatDate = (dateStr?: string) => dateStr ? dateStr.split('T')[0] : '--'
+const getPlatformList = (platform: string) => {
+    return tokenList.value
+        .filter(item => item.platform.toLowerCase() === platform.toLowerCase())
+        .sort((a, b) => {
+            // 将 isActive 为 true 的排在前面
+            if (a.isActive === b.isActive) return 0;
+            return a.isActive ? -1 : 1;
+        });
 }
-const form = ref<TokenConfig>({ ...initialForm })
 
-// 加载数据
 const loadData = async () => {
     loading.value = true
     try {
         const res: any = await getTokenList()
-        if (res.code === 200) {
-            tokenList.value = res.data || []
-        }
+        if (res.code === 200) tokenList.value = res.data || []
     } finally {
         loading.value = false
     }
 }
 
-// 打开弹窗
-const openDialog = (item?: TokenConfig) => {
-    if (item) {
-        isEdit.value = true
-        form.value = { ...item } // 浅拷贝
-    } else {
-        isEdit.value = false
-        form.value = { ...initialForm }
-    }
+const openDialog = () => {
+    form.value = { ...initialForm }
     dialogVisible.value = true
 }
 
-// 保存逻辑
 const handleSave = async () => {
     if (!form.value.token || !form.value.platform) {
         ElMessage.warning('请填写完整信息')
         return
     }
-
     submitting.value = true
     try {
-        const apiCall = isEdit.value ? updateToken : addToken
-        const res: any = await apiCall(form.value)
-
+        const res: any = await addToken(form.value)
         if (res.code === 200) {
-            ElMessage.success(isEdit.value ? '更新成功' : '添加成功')
+            ElMessage.success('添加成功')
             dialogVisible.value = false
             loadData()
-        } else {
-            ElMessage.error(res.message || '操作失败')
         }
-    } catch (e) {
-        // 错误处理
     } finally {
         submitting.value = false
     }
 }
 
-// 切换状态
-const handleStatusChange = async (item: TokenConfig, newVal: any) => {
-    if (!item.id) return
+const handleStatusChange = async (item: TokenConfig, newVal: boolean) => {
+    if (!item.id || !newVal) return
     try {
-        const res: any = await updateTokenStatus(item.id, newVal)
+        const res: any = await updateTokenStatus(item.id, true)
         if (res.code === 200) {
-            ElMessage.success(`Token已${newVal ? '启用' : '禁用'}`)
-        } else {
-            // 失败回滚
-            item.isActive = !newVal
-            ElMessage.error(res.message)
-        }
-    } catch {
-        item.isActive = !newVal
-    }
-}
-
-// 删除
-const handleDelete = async (id?: number) => {
-    if (!id) return
-    try {
-        const res: any = await deleteToken(id)
-        if (res.code === 200) {
-            ElMessage.success('删除成功')
-            // 前端直接移除，减少一次请求
-            tokenList.value = tokenList.value.filter(t => t.id !== id)
+            ElMessage.success(`${item.platform} token切换成功`)
+            loadData()
         }
     } catch (e) { console.error(e) }
 }
 
-// 工具函数：脱敏显示
-const maskToken = (token: string) => {
-    if (!token) return ''
-    if (token.length < 10) return '******'
-    return `${token.substring(0, 4)}****${token.substring(token.length - 4)}`
+const handleValidate = async (id: number) => {
+    validatingId.value = id
+    try {
+        const res: any = await validateToken(id)
+        if (res.code === 200) {
+            res.data === true ? ElMessage.success('验证通过') : ElMessage.error('Token已失效')
+            await loadData()
+        }
+    } catch (e) {
+        ElMessage.error('测试连接请求失败')
+    } finally {
+        validatingId.value = null
+    }
 }
 
-// 工具函数：复制
-const copyToken = (text: string) => {
-    navigator.clipboard.writeText(text)
-    ElMessage.success('Token已复制到剪贴板')
+const handleDelete = async (id?: number) => {
+    if (!id) return
+    const res: any = await deleteToken(id)
+    if (res.code === 200) {
+        ElMessage.success('删除成功')
+        tokenList.value = tokenList.value.filter(t => t.id !== id)
+    }
 }
 
-// 简单的图标映射（如果没引入iconfont，这里只是示例逻辑）
-const getPlatformIcon = (platform: string) => {
-    return 'el-icon-link'
+const getUsableType = (status: number) => {
+    if (status === 1) return 'success'
+    if (status === 0) return 'danger'
+    return 'unknown'
+}
+
+const getUsableLabel = (status: number) => {
+    if (status === 1) return '连接正常'
+    if (status === 0) return '连接失败'
+    return '未知状态'
 }
 
 onMounted(loadData)
 </script>
 
 <style scoped>
+/* --- 页面基础布局 --- */
 .page-container {
     padding: 0 10px;
+    height: calc(100vh - 100px);
+    display: flex;
+    flex-direction: column;
 }
 
-/* 头部样式 (与之前保持一致) */
 .page-header-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 30px;
+    flex-shrink: 0;
 }
 
+/* --- 控件样式适配 Bento --- */
 .header-left {
     display: flex;
     align-items: center;
@@ -276,8 +262,8 @@ onMounted(loadData)
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    cursor: pointer;
     transition: all 0.2s;
 }
 
@@ -297,204 +283,341 @@ onMounted(loadData)
     font-size: 14px;
 }
 
-/* 黑色按钮 */
 .black-btn {
     background: #1C1C1E;
     color: #fff;
     border: none;
-    border-radius: 30px;
-    padding: 12px 24px;
+    border-radius: 20px;
+    padding: 10px 24px;
     font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 8px;
-    transition: transform 0.2s;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s;
 }
 
 .black-btn:hover {
-    transform: scale(1.05);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    opacity: 0.9;
+    transform: translateY(-1px);
 }
 
-/* --- Bento Card 样式升级 --- */
+/* --- 看板列样式 --- */
+.kanban-board {
+    flex: 1;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.full-height {
+    height: 100% !important;
+}
+
+/* 必须穿透修改 Element Plus 的 el-col 高度 */
+:deep(.el-col) {
+    height: 100%;
+}
+
+.kanban-column {
+    /* background: #f6e79d00; */
+    border-radius: 24px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    /* border: 1px solid #fac76e; */
+}
+
+.column-header {
+    padding: 24px;
+    display: flex;
+    /* justify-content: space-between;  <-- 删除这一行 */
+    justify-content: center;
+    /* 让内容整体水平居中 */
+    align-items: center;
+    position: relative;
+    /* 为 Badge 绝对定位做准备，确保名字在正中心 */
+}
+
+.column-header .platform-name {
+    font-size: 18px;
+    font-weight: 800;
+    color: #1C1C1E;
+    /* 如果你想让名字完全不受 Badge 宽度影响而偏移，可以加一点 padding */
+}
+
+.platform-name {
+    font-size: 18px;
+    font-weight: 800;
+    color: #1C1C1E;
+}
+
+/* 自定义计数器样式 */
+.platform-count {
+    background: #F2F2F7;
+    /* 极浅灰背景 */
+    color: #8E8E93;
+    /* 辅助灰色文字 */
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    /* 胶囊圆角 */
+    min-width: 20px;
+    text-align: center;
+    display: inline-block;
+    line-height: 1.2;
+}
+
+/* 让 Badge 悬浮在名字旁边或者固定在右侧 */
+:deep(.column-header .el-badge) {
+    margin-left: 12px;
+    /* 给 Badge 和名字之间留点呼吸感 */
+}
+
+/* --- Bento Card 核心样式 --- */
 .bento-card {
-    background: #fff;
+    background: #FFFFFF;
     border-radius: 24px;
     padding: 24px;
-    margin-bottom: 24px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+    margin-bottom: 16px;
     border: 1px solid transparent;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+/* 1. 默认状态下隐藏启用按钮 */
+.enable-btn {
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease-in-out;
+}
+
+/* 2. 当鼠标悬浮在 bento-card 上时，显示该卡片内的启用按钮 */
+.bento-card:hover .enable-btn {
+    opacity: 1;
+    visibility: visible;
 }
 
 .bento-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+    border-color: rgba(0, 0, 0, 0.05);
 }
 
-/* 禁用状态下的卡片样式 */
-.bento-card.inactive {
-    opacity: 0.8;
-    background: #FAFAFA;
+.active-card {
+    background: #fdfdfb;
+    border-color: rgba(0, 122, 255, 0.2);
+    /* 已启用的卡片可以稍微加重阴影以示区别 */
+    box-shadow: 0 8px 20px rgba(0, 122, 255, 0.05);
 }
 
-.bento-card.inactive .card-body {
-    filter: grayscale(1);
-}
-
-/* 卡片内部布局 */
 .card-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
 }
 
-.platform-badge {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 700;
-    text-transform: capitalize;
-}
-
-.platform-badge.github {
-    background: #1C1C1E;
-    color: #fff;
-}
-
-.platform-badge.gitee {
-    background: #FEF2F2;
-    color: #C0392B;
-    border: 1px solid #FADBD8;
-}
-
-.platform-badge.gitlab {
-    background: #faf9af;
-    color: #fcb51d;
-    border: 1px solid #ffe96d;
-}
-
-.card-body {
-    margin-bottom: 20px;
-}
-
-.remark-title {
-    margin: 0 0 8px 0;
-    font-size: 16px;
-    color: #1C1C1E;
-}
-
-.token-box {
-    background: #F3F4F6;
-    padding: 8px 12px;
-    border-radius: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-family: monospace;
-    color: #6B7280;
-    font-size: 13px;
-}
-
-.copy-icon {
-    cursor: pointer;
-    transition: color 0.2s;
-}
-
-.copy-icon:hover {
-    color: #1C1C1E;
-}
-
-.card-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-top: 1px solid #F3F4F6;
-    padding-top: 15px;
-}
-
-.status-dot {
+.date {
     font-size: 12px;
-    font-weight: 600;
+    color: #9CA3AF;
+}
+
+.card-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1C1C1E;
+    line-height: 1.4;
+}
+
+.active-tag-mini {
     display: flex;
     align-items: center;
     gap: 6px;
+    font-size: 12px;
+    color: #007AFF;
+    margin-top: 8px;
 }
 
-.status-dot::before {
-    content: '';
-    width: 8px;
-    height: 8px;
+.active-tag-mini .dot {
+    width: 6px;
+    height: 6px;
+    background: #007AFF;
     border-radius: 50%;
-    display: block;
 }
 
-.status-dot.active {
-    color: #059669;
-}
-
-.status-dot.active::before {
-    background: #059669;
-    box-shadow: 0 0 8px #059669;
-}
-
-.status-dot.inactive {
-    color: #9CA3AF;
-}
-
-.status-dot.inactive::before {
-    background: #D1D5DB;
-}
-
-.action-group {
+.card-bottom {
     display: flex;
-    gap: 5px;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #F3F4F6;
 }
 
-.icon-btn {
-    font-size: 16px;
-    padding: 8px;
-    border-radius: 8px;
-    color: #9CA3AF;
-    transition: all 0.2s;
+/* --- 状态标签适配 --- */
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
 }
 
-.icon-btn:hover {
-    background: #F3F4F6;
-    color: #1C1C1E;
+.status-badge.success {
+    background: #ECFDF5;
+    color: #10B981;
 }
 
-.icon-btn.delete:hover {
-    color: #EF4444;
+.status-badge.danger {
     background: #FEF2F2;
+    color: #EF4444;
 }
 
-/* 弹窗表单样式优化 */
-.soft-input :deep(.el-input__wrapper) {
-    border-radius: 12px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02) !important;
+.status-badge.unknown {
+    background: #e8e9cb;
+    color: #e7ac69;
 }
 
-.soft-radio :deep(.el-radio-button__inner) {
-    border: none;
-    background: #F3F4F6;
-    padding: 10px 20px;
-    box-shadow: none;
+/* --- Element Plus 深度覆盖 --- */
+:deep(.soft-input .el-input__wrapper),
+:deep(.soft-select .el-input__wrapper) {
+    border-radius: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+    border: 1px solid transparent;
+    transition: all 0.3s;
 }
 
-.soft-radio :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
-    background: #1C1C1E;
-    color: #fff;
+:deep(.soft-input .el-input__wrapper.is-focus),
+:deep(.soft-select .el-input__wrapper.is-focus) {
+    box-shadow: 0 0 0 1px #1C1C1E !important;
 }
 
 .full-width {
     width: 100%;
+}
+
+.delete-icon-btn {
+    color: #9CA3AF;
+    font-size: 18px;
+}
+
+.delete-icon-btn:hover {
+    color: #EF4444;
+}
+
+.column-scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 16px 16px 16px;
+}
+
+.column-scroll-area::-webkit-scrollbar {
+    width: 2px;
+}
+
+.column-scroll-area::-webkit-scrollbar-thumb {
+    background: #e5e7ebbd;
+    border-radius: 10px;
+}
+
+.dialog-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding-top: 20px;
+}
+
+/* 基础按钮样式 (统一大小和形状) */
+.action-btn {
+    height: 44px;
+    /* 增加高度，更有触摸感 */
+    padding: 0 24px;
+    border-radius: 22px;
+    /* 完美胶囊形 */
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dialog-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    /* 如果希望在右侧，保留这个 */
+    /* justify-content: space-between; */
+    /* 如果希望平分底部，取消注释这一行 */
+    padding-top: 20px;
+}
+
+/* 基础按钮样式 - 确保大小完全一致的关键 */
+.action-btn {
+    height: 44px;
+    /* 1. 设置固定宽度，确保两个按钮长得一模一样 */
+    width: 120px;
+
+    border-radius: 22px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 取消按钮 */
+.cancel-btn {
+    background: #F2F2F7;
+    color: #8E8E93;
+}
+
+.cancel-btn:hover {
+    background: #E5E5EA;
+    color: #1C1C1E;
+}
+
+/* 确认按钮 */
+.confirm-btn {
+    background: #1C1C1E;
+    color: #FFFFFF;
+    /* 移除 flex: 1，否则它会占满剩余空间 */
+}
+
+.confirm-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.confirm-btn:disabled {
+    background: #AEAEB2;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* 加载动画 */
+.is-loading {
+    animation: rotating 2s linear infinite;
+}
+
+@keyframes rotating {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
 </style>

@@ -44,6 +44,8 @@ export interface TokenConfig {
   token: string
   remark?: string
   isActive?: boolean
+  isUsable: 0 | 1 | 2
+  createAt?: string;
 }
 
 // 通用的返回结构接口
@@ -99,6 +101,8 @@ export const updateTokenStatus = (id: number, isActive: boolean) =>
   request.patch(`/token-config/${id}/status`, null, { params: { isActive } })
 
 export const deleteToken = (id: number) => request.delete(`/token-config/${id}`)
+
+export const validateToken = (id: number) => request.get(`/token-config/validate/${id}`)// 校验 Token 是否可用
 
 // --- 统计分析接口 ---
 export const getAnalysisOverview = (): Promise<Result> => request.get('/analysis/overview')

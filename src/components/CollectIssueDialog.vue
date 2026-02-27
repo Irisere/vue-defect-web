@@ -130,7 +130,6 @@ const close = (v = false) => {
 
 const startCollect = async () => {
     if (!props.repo) return
-
     loading.value = true
     status.value = 'collecting'
 
@@ -146,15 +145,15 @@ const startCollect = async () => {
         })
 
         if (res.code === 200) {
-            const data = JSON.parse(res.data)
-            result.value.updateNum = data?.data?.update_num ?? 0
+            const data = res.data
+            result.value.updateNum = data?.data?.update_num ?? data?.update_num ?? 0
+
             status.value = 'done'
             emit('success')
         } else {
             throw new Error(res.message)
         }
-    } catch (e) {
-        ElMessage.error('采集失败')
+    } catch (e: any) {
         status.value = 'form'
     } finally {
         loading.value = false
