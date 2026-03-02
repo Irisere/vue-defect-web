@@ -33,7 +33,6 @@ export interface Defect {
   title: string
   description: string
   severity: string
-  state: string
   url: string
   createdAt: string
 }
@@ -78,6 +77,7 @@ export const getDefectsByRepo = (repoId: number) => request.get(`/defect/repo/${
 export const deleteDefect = (id: number) => {
   return request.delete(`/defect/${id}`)
 }
+export const updateDefect = (data: any) => request.put('/defect', data)
 // 导出缺陷报告 Excel
 export const exportDefectExcel = (repoId: number) => {
   return request.get(`/defect/repo/${repoId}/export`, {

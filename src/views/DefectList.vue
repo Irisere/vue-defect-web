@@ -64,31 +64,52 @@
             <template #header>
                 <div class="drawer-header-bar">
                     <span>Issue Details</span>
-                    <el-button type="danger" plain size="small" @click="handleDelete">
-                        删除
-                    </el-button>
+                    <div class="header-actions">
+                        <template v-if="!isEdit">
+                            <el-button type="primary" plain size="small" @click="isEdit = true">修改报告</el-button>
+                        </template>
+                        <template v-else>
+                            <el-button type="primary" size="small" @click="handleUpdate"
+                                :loading="updating">保存</el-button>
+                            <el-button size="small" @click="isEdit = false">取消</el-button>
+                        </template>
+                        <el-button type="danger" plain size="small" @click="handleDelete">删除</el-button>
+                    </div>
                 </div>
             </template>
 
             <div v-if="currentDefect" class="drawer-content">
-                <div class="drawer-header">
-                    <span class="severity-badge large" :class="getSeverityClass(currentDefect.severity)">
-                        {{ currentDefect.severity }}
-                    </span>
-                    <span class="status-text">Open</span>
-                </div>
-                <h2 class="drawer-title">{{ currentDefect.title }}</h2>
+                <h2 v-if="!isEdit" class="drawer-title">{{ currentDefect.title }}</h2>
+                <el-input v-else v-model="currentDefect.title" class="edit-field" placeholder="缺陷标题" />
+
                 <div class="info-grid">
                     <div class="info-item">
+                        <label>Severity</label>
+                        <span v-if="!isEdit" class="severity-badge large"
+                            :class="getSeverityClass(currentDefect.severity)">
+                            {{ currentDefect.severity }}
+                        </span>
+                        <el-select v-else v-model="currentDefect.severity" size="small">
+                            <el-option v-for="s in ['Critical', 'High', 'Medium', 'Low', 'UnKnow']" :key="s" :label="s"
+                                :value="s" />
+                        </el-select>
+                    </div>
+                    <div class="info-item">
                         <label>Version</label>
-                        <p>{{ currentDefect.version || 'Unknown' }}</p>
+                        <p v-if="!isEdit">{{ currentDefect.version || 'Unknown' }}</p>
+                        <el-input v-else v-model="currentDefect.version" size="small" />
                     </div>
                 </div>
+
                 <el-divider />
+
                 <h4>Steps to Reproduce</h4>
-                <div class="code-block">{{ currentDefect.stepsToReproduce }}</div>
+                <div v-if="!isEdit" class="code-block">{{ currentDefect.stepsToReproduce }}</div>
+                <el-input v-else v-model="currentDefect.stepsToReproduce" type="textarea" :rows="4" />
+
                 <h4>Description</h4>
-                <p class="text-body">{{ currentDefect.description }}</p>
+                <p v-if="!isEdit" class="text-body">{{ currentDefect.description }}</p>
+                <el-input v-else v-model="currentDefect.description" type="textarea" :rows="6" />
             </div>
         </el-drawer>
     </div>
@@ -138,11 +159,6 @@ const loadData = async () => {
     if (res.code === 200 || res.data) {
         defectList.value = res.data || res
     }
-}
-
-const showDetail = (item: any) => {
-    currentDefect.value = item
-    drawer.value = true
 }
 
 //删除报告
@@ -236,6 +252,42 @@ const getSeverityClass = (sev: string) => {
     if (sev === 'Medium') return 'medium'
     if (sev === 'Low') return 'low'
     if (sev === 'UnKnow') return 'unknow'
+}
+
+//修改缺陷报告
+// 1. 新增状态
+const isEdit = ref(false)     // 是否处于编辑模式
+const updating = ref(false)   // 保存按钮加载状态
+
+// 2. 引入更新 API (确保你的 api 文件中有这个导出)
+import { updateDefect } from '../api'
+
+// 3. 修改 showDetail 方法
+const showDetail = (item: any) => {
+    // 使用深拷贝，确保编辑时不会直接影响原始列表数据
+    currentDefect.value = JSON.parse(JSON.stringify(item))
+    isEdit.value = false // 每次打开默认为只读模式
+    drawer.value = true
+}
+
+// 4. 新增保存逻辑
+const handleUpdate = async () => {
+    if (!currentDefect.value) return
+    updating.value = true
+    try {
+        const res: any = await updateDefect(currentDefect.value)
+        if (res.code === 200) {
+            ElMessage.success('更新成功')
+            // 更新本地原始列表数据以同步页面显示
+            const index = defectList.value.findIndex(d => d.id === currentDefect.value.id)
+            if (index !== -1) {
+                defectList.value[index] = { ...currentDefect.value }
+            }
+            isEdit.value = false // 保存成功后回退到只读模式
+        }
+    } finally {
+        updating.value = false
+    }
 }
 
 onMounted(loadData)
@@ -495,6 +547,30 @@ onMounted(loadData)
     font-weight: 700;
     color: #1C1C1E;
     margin-bottom: 20px;
+}
+
+/* 新增样式 */
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.edit-field {
+    margin-bottom: 20px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+/* 确保只读模式下换行符生效 */
+.text-body,
+.code-block {
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* 编辑状态下 textarea 间距 */
+:deep(.el-textarea) {
+    margin-bottom: 15px;
 }
 
 .info-grid {
