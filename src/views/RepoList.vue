@@ -18,7 +18,7 @@
                     <el-icon>
                         <Search />
                     </el-icon>
-                    <input type="text" placeholder="Search repos..." />
+                    <input type="text" placeholder="Search repos..." v-model="searchQuery" />
                 </div>
                 <el-button type="primary" size="large" @click="dialogVisible = true">
                     <el-icon style="margin-right: 6px">
@@ -27,7 +27,7 @@
                 </el-button>
             </div>
 
-            <el-table :data="repoList" style="width: 100%" size="large">
+            <el-table :data="filteredRepoList" style="width: 100%" size="large">
                 <el-table-column prop="platform" label="Platform" width="120">
                     <template #default="scope">
                         <span class="status-pill" :class="scope.row.platform">
@@ -87,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Search, Plus, Delete } from '@element-plus/icons-vue'
 import { getRepoByProject, addRepo, deleteRepo } from '../api'
@@ -97,6 +97,7 @@ import CollectIssueDialog from '@/components/CollectIssueDialog.vue'
 
 const collectDialogVisible = ref(false)
 const currentRepo = ref<any>(null)
+const searchQuery = ref('') // 定义搜索关键词变量
 
 
 const route = useRoute(); const router = useRouter(); const projectId = Number(route.params.id);
@@ -145,6 +146,20 @@ const handleDelete = async (row: any) => {
         // 取消删除不作处理
     }
 }
+// 搜索过滤逻辑
+const filteredRepoList = computed(() => {
+    // 如果没有输入关键词，返回原列表
+    if (!searchQuery.value) return repoList.value
+
+    const keyword = searchQuery.value.toLowerCase()
+    return repoList.value.filter((item: any) => {
+        return (
+            item.owner.toLowerCase().includes(keyword) ||
+            item.repoName.toLowerCase().includes(keyword) ||
+            item.platform.toLowerCase().includes(keyword)
+        )
+    })
+})
 </script>
 
 <style scoped>

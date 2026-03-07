@@ -12,7 +12,7 @@
           <el-icon>
             <Search />
           </el-icon>
-          <input type="text" placeholder="Search for projects..." />
+          <input type="text" placeholder="Search for projects..." v-model="searchQuery" />
         </div>
         <button class="black-btn" @click="openCreateDialog">
           New Project <el-icon class="icon-right">
@@ -52,7 +52,7 @@
       <div class="section-title">My Projects</div>
 
       <div class="projects-container">
-        <div v-for="(item, index) in projectList" :key="item.id" class="project-strip" @click="goToRepo(item)">
+        <div v-for="(item, index) in filteredProjectList" :key="item.id" class="project-strip" @click="goToRepo(item)">
           <div class="strip-left">
             <div class="icon-box">
               <el-icon>
@@ -78,15 +78,17 @@
                 <Edit />
               </el-icon>
             </el-button>
-            <el-button size="small" circle type="danger" plain :icon="Delete" @click="handleDelete(item)"
+
+            <el-button size="small" circle type="danger" plain :icon="Delete" @click.stop="handleDelete(item)"
               style="margin-left: 12px" />
+
             <el-icon class="arrow-btn">
               <ArrowRight />
             </el-icon>
           </div>
         </div>
 
-        <el-empty v-if="projectList.length === 0" description="No projects yet" />
+        <el-empty v-if="filteredProjectList.length === 0" description="没有找到匹配的项目" />
       </div>
     </div>
 
@@ -114,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, computed } from 'vue'
 import { Search, Plus, TrendCharts, Folder, ArrowRight, Edit, Delete } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { getProjectList, addProject, updateProject, deleteProject } from '../api'
@@ -127,6 +129,7 @@ const dialogVisible = ref(false)
 // 状态管理
 const isEditMode = ref(false)
 const currentEditId = ref<number | null>(null)
+const searchQuery = ref('')//  定义搜索响应式变量
 // 使用对象管理表单，方便扩展
 const projectForm = reactive({
   name: '',
@@ -218,6 +221,17 @@ const handleDelete = async (row: any) => {
     // 取消删除不作处理
   }
 }
+
+//搜索：创建计算属性，据关键词过滤列表
+const filteredProjectList = computed(() => {
+  if (!searchQuery.value) return projectList.value
+
+  const keyword = searchQuery.value.toLowerCase()
+  return projectList.value.filter(item =>
+    item.name.toLowerCase().includes(keyword) ||
+    (item.remark && item.remark.toLowerCase().includes(keyword))
+  )
+})
 
 
 const goToRepo = (item: any) => {
