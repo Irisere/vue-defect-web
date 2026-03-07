@@ -53,6 +53,8 @@
                         <el-button size="small" round class="action-btn secondary" @click="viewDefects(scope.row)">
                             查看报告
                         </el-button>
+                        <el-button size="small" circle type="danger" plain :icon="Delete"
+                            @click="handleDelete(scope.row)" style="margin-left: 12px" />
                     </template>
                 </el-table-column>
             </el-table>
@@ -87,8 +89,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, Search, Plus } from '@element-plus/icons-vue'
-import { getRepoByProject, addRepo } from '../api'
+import { ArrowLeft, Search, Plus, Delete } from '@element-plus/icons-vue'
+import { getRepoByProject, addRepo, deleteRepo } from '../api'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import CollectIssueDialog from '@/components/CollectIssueDialog.vue'
 
 
@@ -115,6 +118,33 @@ const handleCollect = (row: any) => {
 const handleCreate = async () => { await addRepo({ ...form.value, projectId }); dialogVisible.value = false; loadData(); };
 const viewDefects = (row: any) => { router.push(`/repo/${row.id}/defects`); };
 onMounted(loadData);
+
+// 删除处理逻辑
+const handleDelete = async (row: any) => {
+    try {
+        await ElMessageBox.confirm(
+            `确认取消关联仓库 [${row.repoName}] 吗？相关采集的缺陷数据可能也会受影响。`,
+            '警告',
+            {
+                confirmButtonText: '确认删除',
+                cancelButtonText: '取消',
+                type: 'warning',
+                buttonSize: 'default',
+                draggable: true,
+            }
+        )
+
+        const res: any = await deleteRepo(row.id)
+        if (res.code === 200) {
+            ElMessage.success('删除成功')
+            loadData() // 刷新列表
+        } else {
+            ElMessage.error(res.message || '删除失败')
+        }
+    } catch (error) {
+        // 取消删除不作处理
+    }
+}
 </script>
 
 <style scoped>

@@ -78,7 +78,8 @@
                 <Edit />
               </el-icon>
             </el-button>
-
+            <el-button size="small" circle type="danger" plain :icon="Delete" @click="handleDelete(item)"
+              style="margin-left: 12px" />
             <el-icon class="arrow-btn">
               <ArrowRight />
             </el-icon>
@@ -89,11 +90,11 @@
       </div>
     </div>
 
-    <el-dialog v-model="dialogVisible" :title="isEditMode ? 'Edit Project' : 'Create New Project'" width="450px"
-      align-center class="custom-dialog">
+    <el-dialog v-model="dialogVisible" :title="isEditMode ? '编辑项目' : '新建项目'" width="450px" align-center
+      class="custom-dialog">
       <el-form label-position="top" size="large">
         <el-form-item label="项目名称">
-          <el-input v-model="projectForm.name" placeholder="Project Name" />
+          <el-input v-model="projectForm.name" placeholder="给项目取个名吧~" />
         </el-form-item>
         <el-form-item label="项目备注">
           <el-input v-model="projectForm.remark" placeholder="简短描述项目用途..." type="textarea" :rows="2" />
@@ -102,9 +103,9 @@
 
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">Cancel</el-button>
+          <el-button @click="dialogVisible = false">取消</el-button>
           <el-button type="primary" color="#1C1C1E" @click="handleSubmit">
-            {{ isEditMode ? 'Save Changes' : 'Create' }}
+            {{ isEditMode ? '保存更改' : '创建' }}
           </el-button>
         </span>
       </template>
@@ -114,12 +115,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue'
-import {
-  Search, Plus, TrendCharts, Folder, ArrowRight, Edit
-} from '@element-plus/icons-vue'
+import { Search, Plus, TrendCharts, Folder, ArrowRight, Edit, Delete } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
-import { getProjectList, addProject, updateProject } from '../api'
-import { ElMessage } from 'element-plus'
+import { getProjectList, addProject, updateProject, deleteProject } from '../api'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const router = useRouter()
 const projectList = ref<any[]>([])
@@ -190,6 +189,33 @@ const handleSubmit = async () => {
     loadData()
   } catch (e: any) {
     ElMessage.error(e.message || '操作失败')
+  }
+}
+
+// 删除处理逻辑
+const handleDelete = async (row: any) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认删除项目 [${row.name}] 吗？相关的关联仓库及采集的缺陷数据可能也会受影响。`,
+      '警告',
+      {
+        confirmButtonText: '确认删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        buttonSize: 'default',
+        draggable: true,
+      }
+    )
+
+    const res: any = await deleteProject(row.id)
+    if (res.code === 200) {
+      ElMessage.success('删除成功')
+      loadData() // 刷新列表
+    } else {
+      ElMessage.error(res.message || '删除失败')
+    }
+  } catch (error) {
+    // 取消删除不作处理
   }
 }
 

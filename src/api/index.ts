@@ -70,6 +70,7 @@ export const addRepo = (data: Repo) => request.post('/repo', data)
 export const collectIssues = (params: any) => {
   return request.get('/repo/collect/issue', { params })
 }
+export const deleteRepo = (id: number) => request.delete(`/repo/${id}`)
 
 
 // --- 缺陷相关 ---
