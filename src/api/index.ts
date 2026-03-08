@@ -66,6 +66,17 @@ export const updateProject = (id: number, data: Project) =>  request.put(`/proje
 export const getRepoByProject = (projectId: number) => 
   request.get(`/repo/project/${projectId}`)
 export const addRepo = (data: Repo) => request.post('/repo', data)
+//根据url导入仓库
+export const importRepo = (data: { url: string; projectId: number }) => request.post('/repo/import', data);
+// 校验仓库有效性
+export const validateRepo = (params: { platform: string; owner: string; repoName: string }) => 
+    request.get('/repo/validate', { params });
+/**
+ * 批量校验仓库有效性
+ * @param repos 仓库列表对象数组
+ */
+export const validateRepoBatch = (repos: Repo[]) => 
+    request.post<any, Result<Record<number, boolean>>>('/repo/validate/batch', repos);
 // 核心功能：触发采集
 export const collectIssues = (params: any) => {
   return request.get('/repo/collect/issue', { params })
