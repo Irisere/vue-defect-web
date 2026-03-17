@@ -191,6 +191,7 @@ const initSeverityChart = (data: any[]) => {
     const colorMap: Record<string, string> = {
         'Critical': '#EF4444', // 红
         'High': '#F59E0B',     // 橙
+        'Medium': '#D97706',
         'Normal': '#10B981',   // 绿
         'Low': '#3B82F6',      // 蓝
         'Unknown': '#9CA3AF'
