@@ -23,7 +23,7 @@
                     <el-option label="High" value="High" />
                     <el-option label="Medium" value="Medium" />
                     <el-option label="Low" value="Low" />
-                    <el-option label="UnKnow" value="UnKnow" />
+                    <el-option label="Unknown" value="Unknown" />
                 </el-select>
 
                 <el-radio-group v-model="sortOrder" class="soft-radio" size="large">
@@ -33,7 +33,7 @@
             </div>
         </div>
 
-        <el-row :gutter="24">
+        <el-row :gutter="24" v-if="displayList.length > 0">
             <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="defect in displayList" :key="defect.id">
                 <div class="bento-card" @click="showDetail(defect)">
                     <div class="card-top">
@@ -44,12 +44,10 @@
                     </div>
 
                     <h4 class="card-title">{{ defect.title }}</h4>
-                    <p class="card-desc">{{ defect.description?.substring(0, 60) }}...</p>
+                    <p class="card-desc">{{ defect.description?.substring(0, 80) }}...</p>
 
                     <div class="card-bottom">
-                        <div class="user-avatar-mini">
-                            <img src="https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png" />
-                        </div>
+                        <div class="user-avatar-mini"></div>
                         <a :href="defect.url" target="_blank" class="link-btn" @click.stop>
                             Open Link <el-icon>
                                 <TopRight />
@@ -60,6 +58,13 @@
             </el-col>
         </el-row>
 
+        <div v-else class="empty-container">
+            <el-empty description="暂无符合条件的缺陷报告" :image-size="200">
+                <template #extra>
+                    <p class="empty-tip">尝试调整筛选条件或稍后再试</p>
+                </template>
+            </el-empty>
+        </div>
         <el-drawer v-model="drawer" title="Issue Details" size="500px" class="custom-drawer">
             <template #header>
                 <div class="drawer-header-bar">
@@ -90,7 +95,7 @@
                             {{ currentDefect.severity }}
                         </span>
                         <el-select v-else v-model="currentDefect.severity" size="small">
-                            <el-option v-for="s in ['Critical', 'High', 'Medium', 'Low', 'UnKnow']" :key="s" :label="s"
+                            <el-option v-for="s in ['Critical', 'High', 'Medium', 'Low', 'Unknown']" :key="s" :label="s"
                                 :value="s" />
                         </el-select>
                     </div>
@@ -104,7 +109,9 @@
                 <el-divider />
 
                 <h4>Steps to Reproduce</h4>
-                <div v-if="!isEdit" class="code-block">{{ currentDefect.stepsToReproduce }}</div>
+                <div v-if="!isEdit" class="code-block steps-view">
+                    {{ formatSteps(currentDefect.stepsToReproduce) }}
+                </div>
                 <el-input v-else v-model="currentDefect.stepsToReproduce" type="textarea" :rows="4" />
 
                 <h4>Description</h4>
@@ -251,7 +258,7 @@ const getSeverityClass = (sev: string) => {
     if (sev === 'High') return 'high'
     if (sev === 'Medium') return 'medium'
     if (sev === 'Low') return 'low'
-    if (sev === 'UnKnow') return 'unknow'
+    return 'unknown';
 }
 
 //修改缺陷报告
@@ -289,6 +296,75 @@ const handleUpdate = async () => {
         updating.value = false
     }
 }
+
+//格式化步骤
+const formatSteps = (steps: any): string => {
+    // 增加对 undefined 和 null 的守卫
+    if (steps === undefined || steps === null || steps === '[]' || steps === '""') {
+        return 'No steps provided';
+    }
+
+    // --- 情况 1：已经是标准的 JS 数组 ---
+    if (Array.isArray(steps)) {
+        return steps
+            .map(s => String(s).replace(/\\n|\n/g, '').trim())
+            .filter(s => s.length > 0)
+            .join('\n');
+    }
+
+    // --- 情况 2：处理字符串 ---
+    if (typeof steps === 'string') {
+        let content: string = steps.trim(); // 明确标注为 string 类型
+
+        if (content === '') return 'No steps provided';
+
+        // 2.1 尝试修复残缺的数组尾部
+        if (content.startsWith('[') && !content.endsWith(']')) {
+            content += "']";
+        }
+
+        // 2.2 暴力清洗法
+        if (content.startsWith('[') && content.endsWith(']')) {
+            try {
+                const regex = /['"](.*?)['"]/g;
+                let m: RegExpExecArray | null;
+                const result: string[] = [];
+                // 解决 "类型 RegExpExecArray | null 不能赋给..." 的问题
+                while ((m = regex.exec(content)) !== null) {
+                    if (m[1]) result.push(m[1].replace(/\\n|\n/g, '').trim());
+                }
+
+                if (result.length > 0) {
+                    // 1. 获取最后一个索引
+                    const lastIndex = result.length - 1;
+                    // 2. 拿到最后一个元素
+                    let lastStep = result[lastIndex];
+
+                    // 3. 此时 TypeScript 仍觉得 lastStep 可能是 undefined
+                    // 我们做一个简单的判断或断言
+                    if (lastStep && content.length > 800 && !/[.!?]$/.test(lastStep)) {
+                        result[lastIndex] = lastStep + "... (truncated)";
+                    }
+                    return result.join('\n');
+                }
+            } catch (e) {
+                console.error("Step parsing failed", e);
+            }
+        }
+
+        // 2.3 最后的兜底
+        // 这里确保返回的一定是字符串
+        const finalContent = content
+            .replace(/[\[\]"']/g, '')
+            .replace(/(\d+\.\s)/g, '\n$1')
+            .replace(/\n+/g, '\n')
+            .trim();
+
+        return finalContent || 'No steps provided';
+    }
+
+    return String(steps);
+};
 
 onMounted(loadData)
 </script>
@@ -492,38 +568,46 @@ onMounted(loadData)
     text-decoration: none;
 }
 
+/* 统一 Badge 基础样式 */
 .severity-badge {
     padding: 4px 12px;
-    border-radius: 20px;
+    border-radius: 12px;
+    /* 稍微方圆一点更显高级 */
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    display: inline-block;
 }
 
+/* 严重：深红文字 + 浅红背景 */
 .severity-badge.critical {
-    background: #DC2626;
-    color: #D97706;
+    background: #FEE2E2;
+    color: #991B1B;
 }
 
+/* 高：深橙文字 + 浅橙背景 */
 .severity-badge.high {
-    background: #ff9147;
-    color: #fd440c;
+    background: #FFEDD5;
+    color: #9A3412;
 }
 
+/* 中：深黄文字 + 浅黄背景 */
 .severity-badge.medium {
-    background: #fff67c;
-    color: #fdc762;
+    background: #FEF9C3;
+    color: #854D0E;
 }
 
+/* 低：深绿文字 + 浅绿背景 */
 .severity-badge.low {
-    background: #adec88ce;
-    color: #D97706;
+    background: #DCFCE7;
+    color: #166534;
 }
 
-.severity-badge.unknow {
-    background: #e8e9cb;
-    color: #e7ac69;
+/* 未知：深灰文字 + 浅灰背景 */
+.severity-badge.unknown {
+    background: #F3F4F6;
+    color: #374151;
 }
 
 /* Drawer Styles */
@@ -608,4 +692,45 @@ onMounted(loadData)
     line-height: 1.6;
     color: #4B5563;
 }
+
+/* 让每一行步骤之间有一点间距 */
+.step-item {
+    margin-bottom: 8px;
+    line-height: 1.5;
+    color: #374151;
+    padding-left: 5px;
+    border-left: 3px solid #E5E7EB;
+    /* 加个小竖条显得更高级 */
+}
+
+/* 确保 code-block 里的换行符 \n 能被浏览器识别 */
+.code-block {
+    white-space: pre-wrap;
+    /* 必须保留，否则 \n 会被当成空格 */
+    word-break: break-all;
+    background: #F9FAFB;
+    padding: 15px;
+    border-radius: 12px;
+    font-family: inherit;
+    /* 如果不想要等宽字体，可以改成 inherit */
+}
+
+.steps-view {
+    /* 核心：识别换行符并自动换行 */
+    white-space: pre-wrap;
+    word-break: break-word;
+
+    /* 视觉美化 */
+    line-height: 1.8;
+    /* 增加行高，方便阅读 */
+    background: #fdfdfd;
+    /* 稍微浅一点的背景 */
+    border-left: 4px solid #1C1C1E;
+    /* 侧边黑条，符合你的 Bento 风格 */
+    padding: 15px 20px;
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #374151;
+}
+
+/* 如果想让里面的 1. 2. 3. 颜色深一点，可以根据需要微调 */
 </style>

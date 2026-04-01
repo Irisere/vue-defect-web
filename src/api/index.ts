@@ -3,7 +3,7 @@ import axios from 'axios'
 // 1. 创建 axios 实例
 const request = axios.create({
   baseURL: '/api', // 这里假设你会在 vite.config.ts 配置代理，或者后端直接跨域
-  timeout: 10000
+  timeout: 480000
 })
 
 // 响应拦截器（简化版）
