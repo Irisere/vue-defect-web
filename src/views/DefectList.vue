@@ -44,7 +44,7 @@
                     </div>
 
                     <h4 class="card-title">{{ defect.title }}</h4>
-                    <p class="card-desc">{{ defect.description?.substring(0, 80) }}...</p>
+                    <p class="card-desc">{{ defect.description?.substring(0, 100) }}...</p>
 
                     <div class="card-bottom">
                         <div class="user-avatar-mini"></div>
@@ -537,10 +537,19 @@ onMounted(loadData)
 
 .card-desc {
     font-size: 13px;
+    line-height: 1.4;
     color: #6B7280;
     flex: 1;
     overflow: hidden;
     margin: 0;
+
+    /* 关键：开启多行省略 */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    /* 这里设置显示几行，3行通常比较美观 */
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .card-bottom {
